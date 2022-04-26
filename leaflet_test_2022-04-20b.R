@@ -1,5 +1,6 @@
 # Teresita M. Porter, April 20, 2022
 # WWF watershed shapefiles from Mike Wright
+# Data cleaned by Artin Mashayekhi
 
 # read in shapefile
 library(sf)
