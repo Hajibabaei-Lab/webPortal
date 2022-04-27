@@ -1,5 +1,5 @@
 # Teresita M. Porter, April 20, 2022
-# WWF watershed shapefiles from Mike Wright
+# WWF watershed .shp files from Mike Wright
 # Data cleaned by Artin Mashayekhi
 
 # read in .shp file
@@ -17,12 +17,6 @@ library(spatialEco)
 # read in a .shp file
 system.time(wwf_read <- st_read("Subwatersheds/WSC_subwatersheds.shp", quiet = TRUE))
 
-# check out the geometry (already WGS84)
-wwf_geom <- st_geometry(wwf_read)
-
-# switch off spherical geometry (may not be needed)
-sf::sf_use_s2(FALSE)
-
 # id should really be a key to map watersheds from WWF to our samples (done below, remove id step here)
 wwf_wgs84 <- wwf_read %>%
   st_buffer(0) %>% # Make invalid geometries valid
@@ -35,7 +29,7 @@ simplified <- rmapshaper::ms_simplify(wwf_wgs84)
 
 
 ###############################
-# read in metadata file containing sites data with site sample, latitude, and longitude information
+# read in metadata file containing sites data with site sample, latitude, and longitude information. 
 s <- read.csv("metadata.csv", header=TRUE, stringsAsFactors = FALSE)
 
 # get unique latitude, longitude, and label
