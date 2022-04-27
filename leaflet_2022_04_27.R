@@ -4,28 +4,23 @@
 
 # read in .shp file
 library(sf)
-library(dplyr)
 
 # plotting & data flipping
 library(leaflet)
 library(htmltools)
-library(spatialEco)
-
 
 
 ###############################
 # read in a .shp file
 system.time(wwf_read <- st_read("Subwatersheds/WSC_subwatersheds.shp", quiet = TRUE))
 
-# fix geomtry data and add IDs
+# fix geometry data and add IDs
 wwf_wgs84 <- wwf_read %>%
-  ##st_buffer(0) %>% # For making invalid geometries valid
-  st_transform(crs = 4326) %>% # Convert coordinates to WGS84
-  mutate(id = c(1:length(rownames(wwf_read)))) # Add column with ID to each site
+  st_buffer(0) %>% # For making invalid geometries valid
+  st_transform(crs = 4326) ##%>% # Convert coordinates to WGS84
 
 # simplify so that map loads faster
 simplified <- rmapshaper::ms_simplify(wwf_wgs84)
-
 
 
 ###############################
@@ -44,15 +39,9 @@ leaflet(s3) %>%
   addPolygons(data=simplified, color = "darkgrey", fillColor="white",weight = 0.5, smoothFactor = 0.5,
               opacity = 1.0, fillOpacity = 0.5,
               popup = simplified$WSCSDA) %>%
-  # alternative plotting using clustered points
-  ##addCircleMarkers(~Long, ~Lat, popup=~htmlEscape(Watershed),
-  ##                  clusterOptions = markerClusterOptions()
-  ##                 ) 
-  
   # add points as circles
   addCircles(~Long, ~Lat, popup=~htmlEscape(Watershed),
              color = "#0033CC") 
-
 
 
 ###############################
