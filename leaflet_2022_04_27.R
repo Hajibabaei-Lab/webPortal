@@ -17,11 +17,11 @@ library(spatialEco)
 # read in a .shp file
 system.time(wwf_read <- st_read("Subwatersheds/WSC_subwatersheds.shp", quiet = TRUE))
 
-# id should really be a key to map watersheds from WWF to our samples (done below, remove id step here)
+# fix geomtry data and add IDs
 wwf_wgs84 <- wwf_read %>%
-  st_buffer(0) %>% # Make invalid geometries valid
-  st_transform(crs = 4326) %>% # Convert coordinates to WGS84 already in WGS84
-  mutate(id = c(1:length(rownames(wwf_read)))) # Add column with id to each site
+  ##st_buffer(0) %>% # For making invalid geometries valid
+  st_transform(crs = 4326) %>% # Convert coordinates to WGS84
+  mutate(id = c(1:length(rownames(wwf_read)))) # Add column with ID to each site
 
 # simplify so that map loads faster
 simplified <- rmapshaper::ms_simplify(wwf_wgs84)
@@ -45,9 +45,9 @@ leaflet(s3) %>%
               opacity = 1.0, fillOpacity = 0.5,
               popup = simplified$WSCSDA) %>%
   # alternative plotting using clustered points
-  #addCircleMarkers(~Long, ~Lat, popup=~htmlEscape(Watershed),
-  #                  clusterOptions = markerClusterOptions()
-  #                 ) 
+  ##addCircleMarkers(~Long, ~Lat, popup=~htmlEscape(Watershed),
+  ##                  clusterOptions = markerClusterOptions()
+  ##                 ) 
   
   # add points as circles
   addCircles(~Long, ~Lat, popup=~htmlEscape(Watershed),
