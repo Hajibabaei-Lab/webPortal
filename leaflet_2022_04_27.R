@@ -17,11 +17,11 @@ library(spatialEco)
 # read in a .shp file
 system.time(wwf_read <- st_read("Subwatersheds/WSC_subwatersheds.shp", quiet = TRUE))
 
-# id should really be a key to map watersheds from WWF to our samples (done below, remove id step here)
+# fix geomtry data and add IDs
 wwf_wgs84 <- wwf_read %>%
-  st_buffer(0) %>% # Make invalid geometries valid
-  st_transform(crs = 4326) %>% # Convert coordinates to WGS84 already in WGS84
-  mutate(id = c(1:length(rownames(wwf_read)))) # Add column with id to each site
+  ##st_buffer(0) %>% # For making invalid geometries valid
+  st_transform(crs = 4326) %>% # Convert coordinates to WGS84
+  mutate(id = c(1:length(rownames(wwf_read)))) # Add column with ID to each site
 
 # simplify so that map loads faster
 simplified <- rmapshaper::ms_simplify(wwf_wgs84)
@@ -45,9 +45,9 @@ leaflet(s3) %>%
               opacity = 1.0, fillOpacity = 0.5,
               popup = simplified$WSCSDA) %>%
   # alternative plotting using clustered points
-  #addCircleMarkers(~Long, ~Lat, popup=~htmlEscape(Watershed),
-  #                  clusterOptions = markerClusterOptions()
-  #                 ) 
+  ##addCircleMarkers(~Long, ~Lat, popup=~htmlEscape(Watershed),
+  ##                  clusterOptions = markerClusterOptions()
+  ##                 ) 
   
   # add points as circles
   addCircles(~Long, ~Lat, popup=~htmlEscape(Watershed),
@@ -59,7 +59,7 @@ leaflet(s3) %>%
 # get a unique Site_Sample -> WSCSDA map 
 # automatically extract points in a polygon
 # get unique coordinates for each Site_Sample
-##omit the WSCSDA entry if your metadata doesn't have the values beforehand
+## omit the WSCSDA entry if your metadata doesn't have the values beforehand
 s4 <- s[,c("Site_Sample", "Lat", "Long", "WSCSDA")]
 
 # remove any rows with NAs or that are empty 
@@ -74,7 +74,7 @@ s5 <- st_as_sf(s5, coords = c("Long", "Lat"), crs = 4326)
   
 # full map
 pts_poly_map <- unique(s5[,c(1:2)])
-##for mapping new_shape when you don't have the WSCSDA values beforehand
+## for mapping new_shape when you don't have the WSCSDA values beforehand
 ###pts_poly_map <- unique(new_shape[,c(1:2)])
 
 # map with rows with NAs dropped
