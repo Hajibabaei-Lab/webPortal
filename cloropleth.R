@@ -49,8 +49,13 @@ tax$taxon <- ifelse(tax$sBP >= 0.70, paste(tax$Phylum, tax$Class, tax$Species, s
                           ifelse(tax$fBP >= 0.20, paste(tax$Phylum, tax$Class, tax$Family, sep=";"),
                                  paste(tax$Phylum, tax$Class, tax$Order, sep=";"))))
 
+<<<<<<< HEAD
 # give taxon and site per File_Name
 tax.stats <- tax[,c("File_Name", "taxon", "Site")]
+=======
+# give richness per File_Name
+tax.richness <- tax[,c("File_Name", "taxon")]
+>>>>>>> cead98b4fa278ceac6b509342659deb559203cf7
 
 
 ###############################
@@ -67,8 +72,22 @@ s3 <- na.omit(s2)
 # map taxon, samples, and sites to s3 by File_Name
 tax.meta <- merge(tax.stats, s3, by = "File_Name", all.x = TRUE)
 
+<<<<<<< HEAD
 #fix this when the dataset entry is completed
 tax.meta <- tax.meta[!tax.meta$File_Name == "STREAM-DFONLX-B-LALD-000X-X-20201011-COI",]
+=======
+# STREAM-DFONLX-B-LALD-000X-X-20201011-COI in metadata is missing info, but need it because we have sequences for it
+# Artin to get this info from Mike, until then, drop
+tax.meta <- tax.meta[!tax.meta$File_Name=="STREAM-DFONLX-B-LALD-000X-X-20201011-COI",]
+
+# now group by WSCSDA and count unique taxa
+tax.richness <- data.frame(tax.meta %>% group_by(WSCSDA) %>% dplyr::summarise(richness = n_distinct(taxon)))
+
+# add richness to the .shp file
+shp <- merge(simplified, tax.richness, by="WSCSDA", all.x=TRUE)
+# set NA to zero
+shp$richness[is.na(shp$richness)] <- 0
+>>>>>>> cead98b4fa278ceac6b509342659deb559203cf7
 
 # group by WSCSDA and unique taxon counts, sites, and File_Name samples
 tax.richness <- data.frame(tax.meta %>% group_by(WSCSDA) %>% summarise(richness = n_distinct(taxon)))
@@ -82,6 +101,10 @@ shp[, 6:8][is.na(shp[, 6:8])] <- 0
 
 # create color palette
 pal.tmp <- RColorBrewer::brewer.pal(3, "BuGn")
+<<<<<<< HEAD
+=======
+
+>>>>>>> cead98b4fa278ceac6b509342659deb559203cf7
 pal <- colorNumeric(palette = pal.tmp, domain = shp$richness)
 
 # Basic choropleth with leaflet
@@ -95,6 +118,16 @@ m <- leaflet(simplified) %>%
                             "Sites: ", shp$sites, "<br>", 
                             "Samples: ", shp$samples, "<br>"))
 
+<<<<<<< HEAD
+=======
+m
+
+
+# adapt this script to also plot number of "Sites: and Samples:" 
+# per watershed in the popup box
+# Sites, number of unique sites
+# Samples, equivalent to number of unique filenames
+>>>>>>> cead98b4fa278ceac6b509342659deb559203cf7
 
 # adapt to summarize major taxa such as Ephemeroptera, Plecoptera, Trichoptera, Odonata, Chironomidae, Other
 # adapt to summarize number of taxa in each phylum
