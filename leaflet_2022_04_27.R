@@ -1,4 +1,4 @@
-# Teresita M. Porter, April 20, 2022
+# Teresita M. Porter, April 27, 2022
 # WWF watershed .shp files from Mike Wright
 # Data cleaned by Artin Mashayekhi
 
@@ -14,10 +14,10 @@ library(htmltools)
 # read in a .shp file
 system.time(wwf_read <- st_read("Subwatersheds/WSC_subwatersheds.shp", quiet = TRUE))
 
-# fix geometry data and add IDs
+# fix geometry data
 wwf_wgs84 <- wwf_read %>%
   st_buffer(0) %>% # For making invalid geometries valid
-  st_transform(crs = 4326) ##%>% # Convert coordinates to WGS84
+  st_transform(crs = 4326) # Convert coordinates to WGS84
 
 # simplify so that map loads faster
 simplified <- rmapshaper::ms_simplify(wwf_wgs84)
