@@ -1,8 +1,9 @@
-# Teresita M. Porter, April 26, 2022
+# Teresita M. Porter, April 28, 2022
 # WWF watershed .shp files from Mike Wright
 # Data cleaned by Artin Mashayekhi
 # plot richness as cloropleth
 
+###############################
 # read in .shp file
 library(sf)
 
@@ -13,7 +14,7 @@ library(dplyr)
 
 ###############################
 # read in a .shp file
-system.time(wwf_read <- st_read("Subwatersheds/WSC_subwatersheds.shp", quiet = TRUE))
+wwf_read <- st_read("Subwatersheds/WSC_subwatersheds.shp", quiet = TRUE)
 
 # fix geometry data
 wwf_wgs84 <- wwf_read %>%
@@ -55,7 +56,7 @@ tax.stats <- tax[,c("File_Name", "taxon", "Site")]
 
 ###############################
 # Read in metadata
-s <- read.csv("metadata.csv", header=TRUE, stringsAsFactors = FALSE)
+s <- read.csv("metadata.csv", header = TRUE, stringsAsFactors = FALSE)
 
 # Get unique latitude, longitude, file name, and WSCSDA
 s2 <- unique(s[,c("File_Name", "WSCSDA", "Lat","Long")])
@@ -97,10 +98,15 @@ m <- leaflet(simplified) %>%
 m
 
 
-#######################
+###############################
+# Map phylum, order, and family to s3 by File_Name
+#tax.meta2 <- merge(tax.ranks, s3, by = "File_Name", all.x = TRUE)
+# Fix this later
+#tax.meta2 <- tax.meta2[!tax.meta2$File_Name == "STREAM-DFONLX-B-LALD-000X-X-20201011-COI",]
+# Count taxa per phylum
+#phylum <- tax %>% count(tax$Phylum)
+
+
+
 # adapt to summarize major taxa such as Ephemeroptera, Plecoptera, Trichoptera, Odonata, Chironomidae, Other
-# adapt to summarize number of taxa in each phylum
-# ranks for these taxa can be found at ncbi taxonomy page, ex. https://www.ncbi.nlm.nih.gov/taxonomy/?term=Ephemroptera
-# leaflet can be used to display this info as piecharts
-# put together a preliminary report in R markdown to get feedback from Mehrdad
-# https://rmarkdown.rstudio.com/
+## Chironomidae is family, the rest are order
