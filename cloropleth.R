@@ -53,7 +53,6 @@ tax$taxon <- ifelse(tax$sBP >= 0.70, paste(tax$Phylum, tax$Class, tax$Species, s
 # Give taxon and site per File_Name
 tax.stats <- tax[,c("File_Name", "taxon", "Site")]
 
-tax.ranks <- tax[,c("File_Name", "Phylum", "Order", "Family")]
 
 ###############################
 # Read in metadata
@@ -101,7 +100,6 @@ m
 
 ###############################
 # Map phylum, order, and family to s3 by File_Name
-<<<<<<< HEAD
 #tax.meta2 <- merge(tax.ranks, s3, by = "File_Name", all.x = TRUE)
 # Fix this later
 #tax.meta2 <- tax.meta2[!tax.meta2$File_Name == "STREAM-DFONLX-B-LALD-000X-X-20201011-COI",]
@@ -112,20 +110,3 @@ m
 
 # adapt to summarize major taxa such as Ephemeroptera, Plecoptera, Trichoptera, Odonata, Chironomidae, Other
 ## Chironomidae is family, the rest are order
-=======
-tax.meta2 <- merge(tax.ranks, s3, by = "File_Name", all.x = TRUE)
-# Fix this later
-tax.meta2 <- tax.meta2[!tax.meta2$File_Name == "STREAM-DFONLX-B-LALD-000X-X-20201011-COI",]
-
-# Group by WSCSDA and unique phylum
-tax.phylum <- data.frame(tax.meta2 %>% group_by(WSCSDA) %>% summarise(phylum = n_distinct(Phylum)))
-# Count taxa per phylum
-phylum <- tax %>% count(tax$Phylum)
-
-
-# adapt to summarize major taxa such as Ephemeroptera, Plecoptera, Trichoptera, Odonata, Chironomidae, Other
-## Chironomidae is family, the rest are order
-# leaflet can be used to display this info as pie charts
-# put together a preliminary report in R markdown to get feedback from Mehrdad
-# https://rmarkdown.rstudio.com/
->>>>>>> refs/remotes/origin/main
