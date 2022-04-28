@@ -12,7 +12,7 @@ library(htmltools)
 
 ###############################
 # read in a .shp file
-system.time(wwf_read <- st_read("Subwatersheds/WSC_subwatersheds.shp", quiet = TRUE))
+wwf_read <- st_read("Subwatersheds/WSC_subwatersheds.shp", quiet = TRUE)
 
 # fix geometry data
 wwf_wgs84 <- wwf_read %>%
@@ -36,11 +36,12 @@ s3 <- na.omit(s2)
 # plot sites using circles
 leaflet(s3) %>%
   addTiles() %>%
-  addPolygons(data=simplified, color = "darkgrey", fillColor="white",weight = 0.5, smoothFactor = 0.5,
+  addPolygons(data = simplified, color = "darkgrey", fillColor="white",weight = 0.5, smoothFactor = 0.5,
               opacity = 1.0, fillOpacity = 0.5,
-              popup = simplified$WSCSDA) %>%
+              popup = paste("Watershed: ", simplified$WSCSDA_EN, "<br>",
+                            "WSCSDA: ", simplified$WSCSDA, "<br>")) %>%
   # add points as circles
-  addCircles(~Long, ~Lat, popup=~htmlEscape(Watershed),
+  addCircles(~Long, ~Lat, popup = ~htmlEscape(Watershed), 
              color = "#0033CC") 
 
 
