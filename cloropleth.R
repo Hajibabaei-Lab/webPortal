@@ -73,10 +73,10 @@ tax.meta <- tax.meta[!tax.meta$File_Name == "STREAM-DFONLX-B-LALD-000X-X-2020101
 # Group by WSCSDA and unique taxon counts, sites, and File_Name samples
 tax.richness <- data.frame(tax.meta %>% group_by(WSCSDA) %>% summarise(richness = n_distinct(taxon)))
 tax.sites <- merge(data.frame(tax.meta %>% group_by(WSCSDA) %>% summarise(sites = n_distinct(Site))), tax.richness, all.x = TRUE)
-tax.stats <- merge(data.frame(tax.meta %>% group_by(WSCSDA) %>% summarise(samples = n_distinct(File_Name))), tax.sites, all.x = TRUE)
+tax.final <- merge(data.frame(tax.meta %>% group_by(WSCSDA) %>% summarise(samples = n_distinct(File_Name))), tax.sites, all.x = TRUE)
 
 # Add richness, samples, and sites to the .shp file
-shp <- merge(simplified, tax.stats, by = "WSCSDA", all.x = TRUE)
+shp <- merge(simplified, tax.final, by = "WSCSDA", all.x = TRUE)
 # Set NAs to zero
 shp[, 6:8][is.na(shp[, 6:8])] <- 0
 
@@ -99,14 +99,25 @@ m
 
 
 ###############################
-# Map phylum, order, and family to s3 by File_Name
-#tax.meta2 <- merge(tax.ranks, s3, by = "File_Name", all.x = TRUE)
+# Major Taxa
+major <- c("Ephemeroptera", "Plecoptera", "Trichoptera", "Odonata", "Chironomidae")
+# Get the File_Name, Order, and Family
+tax.ranks <- tax[c("File_Name", "Order", "Family")]
+# Get rid of unwanted orders and families
+tax.major <- tax.ranks[grepl(paste(major, collapse = "|"), paste(tax.ranks$Order, tax.ranks$Family)),]
+
+# Map Order and Family to s3 by File_Name
+tax.meta2 <- merge(tax.major, s3, by = "File_Name", all.x = TRUE)
 # Fix this later
-#tax.meta2 <- tax.meta2[!tax.meta2$File_Name == "STREAM-DFONLX-B-LALD-000X-X-20201011-COI",]
+tax.meta2 <- tax.meta2[!tax.meta2$File_Name == "STREAM-DFONLX-B-LALD-000X-X-20201011-COI",]
+
+
+###############################
+# Get the File_Name and Phylum
+tax.ranks2 <- tax[c("File_Name", "Phylum")]
 # Count taxa per phylum
-#phylum <- tax %>% count(tax$Phylum)
+phylum <- tax %>% count(tax$Phylum)
+# Find the top 5 taxa for all the phyla
+phylum <- head(phylum[order(-phylum$n),], 5)
+tax.phylum <- tax.ranks[grepl(paste(phylum$`tax$Phylum`, collapse = "|"), tax.ranks$Phylum),]
 
-
-
-# adapt to summarize major taxa such as Ephemeroptera, Plecoptera, Trichoptera, Odonata, Chironomidae, Other
-## Chironomidae is family, the rest are order
