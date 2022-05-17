@@ -1,7 +1,7 @@
 # Teresita M. Porter, May 10, 2022
 # WWF watershed .shp files from Mike Wright
 # Data cleaned by Artin Mashayekhi
-# plot richness as cloropleth
+# plot richness as chloropleth
 
 ###############################
 # read in .shp file
@@ -486,48 +486,166 @@ phylum <- tax %>% count(tax$Phylum)
 phylum <- head(phylum[order(-phylum$n),], 5)
 topPhyla <- phylum$`tax$Phylum`
 
-# Keep key fields, File_Name, Phylum, taxon, Site
-tax.stats2 <- tax[, c("File_Name", "Phylum", "taxon", "Site")]
+tax.top.phylum <- tax[tax$Phylum %in% topPhyla,]
 
-# Map taxon, samples, and sites to s3 by File_Name
-tax.meta2 <- merge(tax.stats2, s3, by = "File_Name", all.x = TRUE)
-# Fix this later
-tax.meta2 <- tax.meta2[!tax.meta2$File_Name == "STREAM-DFONLX-B-LALD-000X-X-20201011-COI",]
+make_minichart_df <- function(df, rank){
+  # df options: tax.major
+  # rank options: GlobalESV, Species, Genus, Family, taxon
+  # cutoff options: NA, species sBP >= 0.70, genus gBP >= 0.30, species sBP >= 0.20, NA
+  
+  # Keep key fields, File_Name, Order, Family, rank, site
+  # filter by bootstrap values where needed
+  if (rank=="GlobalESV") {
+    df <- df[,c("File_Name","Phylum","GlobalESV","Site")]
+  } else if (rank=="Species") {
+    df <- df[df$sBP >=0.70,]
+    df <- df[,c("File_Name","Phylum","Species","Site")]
+  } else if (rank=="Genus") {
+    df <- df[df$gBP >=0.30,]
+    df <- df[,c("File_Name","Phylum","Genus","Site")]
+  } else if (rank=="Family") {
+    df <- df[df$fBP >=0.20,]
+    df <- df[,c("File_Name","Phylum","Family","Site")]
+  } else {
+    df <- df[,c("File_Name","Phylum","taxon","Site")]
+  }
+  
+  # Map taxon, samples, and sites to s3 by File_Name
+  tax.meta <- merge(unique(df), unique(s3), by = "File_Name", all.x = TRUE)
+  
+  # Group by WSCSDA and unique taxon counts, sites, and File_Name samples
+  length_unique_rank <- paste0('length(unique(',rank,'))')
+  tax.rank <- data.frame(tax.meta %>% 
+                           group_by(WSCSDA, Phylum) %>% 
+                           dplyr::summarize(rank=n_distinct(!!as.symbol(rank))))
+  
+  # Convert long to wide format and remove NAs
+  tax.rank.wide <- dcast(tax.rank, WSCSDA ~ Phylum, value.var = "rank")
+  tax.rank.wide[is.na(tax.rank.wide)] <- 0
+  
+  # Combine major taxa, WSCSDA, and coordinates
+  tax.major.final <- merge(tax.rank.wide, simplified.centroid, by = "WSCSDA", all.x = TRUE)
+  
+}
 
-# Group by WSCSDA and unique taxon counts, sites, and File_Name samples
-tax.phylum <- data.frame(tax.meta2 %>% group_by(WSCSDA, Phylum) %>% summarise(taxon = n_distinct(taxon)))
+df.esv <- make_minichart_df(tax.top.phylum, "GlobalESV")
+df.species <- make_minichart_df(tax.top.phylum, "Species")
+df.genus <- make_minichart_df(tax.top.phylum, "Genus")
+df.family <- make_minichart_df(tax.top.phylum, "Family")
+df.taxon <- make_minichart_df(tax.top.phylum, "taxon")
 
-# convert long to wide format
-tax.phylum.wide <- dcast(tax.phylum, WSCSDA ~ Phylum, value.var = "taxon")
-# set NA to 0
-tax.phylum.wide[is.na(tax.phylum.wide)] <- 0
-
-# only keep cols if they are in the target list (and WSCSDA key field for combining with shp file)
-tax.phylum.wide2 <- tax.phylum.wide[,names(tax.phylum.wide) %in% topPhyla]
-tax.phylum.wide2$WSCSDA <- tax.phylum.wide$WSCSDA
-
-# Combine top 5 phyla, WSCSDA, and coordinates
-tax.phylum.final <- merge(tax.phylum.wide2, simplified.centroid, by = "WSCSDA", all.x = TRUE)
-
-#popups
-my_popups2 <- paste("Watershed: ", tax.phylum.final$WSCSDA_EN, "<br>",
-                   "Annelida: ", tax.phylum.final$Annelida, "<br>", 
-                   "Arthropoda: ", tax.phylum.final$Arthropoda, "<br>", 
-                   "Chordata: ", tax.phylum.final$Chordata, "<br>",
-                   "Cnidaria: ", tax.phylum.final$Cnidaria, "<br>",
-                   "Mollusca: ", tax.phylum.final$Mollusca, "<br>")
+# ESV tab
+my_popups <- paste("Watershed: ", df.esv$WSCSDA_EN, "<br>",
+                   paste(names(df.esv[2]), ": ", sep = ""), prettyNum(df.esv[, 2], big.mark = ","), "<br>", 
+                   paste(names(df.esv[3]), ": ", sep = ""), prettyNum(df.esv[, 3], big.mark = ","), "<br>", 
+                   paste(names(df.esv[4]), ": ", sep = ""), prettyNum(df.esv[, 4], big.mark = ","), "<br>",
+                   paste(names(df.esv[5]), ": ", sep = ""), prettyNum(df.esv[, 5], big.mark = ","), "<br>",
+                   paste(names(df.esv[6]), ": ", sep = ""), prettyNum(df.esv[, 6], big.mark = ","), "<br>")
 
 # Generate leaflet map with pie charts
-p <- leaflet(simplified) %>%
+p.esv <- leaflet(simplified) %>%
   addTiles() %>%
   # addProviderTiles(providers$Stamen.Terrain) %>%
   setView(lat = 60, lng = -95, zoom = 3) %>%
-  addPolygons(data=simplified, color= "darkgrey", stroke = TRUE, weight = 1, 
-              smoothFactor = 0.2, fillColor = pal, fillOpacity = 0.5
+  addPolygons(data=simplified, color= "darkgrey", stroke = TRUE, 
+              weight = 1, smoothFactor = 0.2,
+              fillColor = pal, fillOpacity = 0.5
   )  %>%
-  addMinicharts(lng = tax.phylum.final$Long, lat = tax.phylum.final$Lat, type = "pie", 
-                chartdata = tax.phylum.final[, c("Annelida", "Arthropoda", "Chordata", "Cnidaria", "Mollusca")],
+  addMinicharts(lng = df.esv$Long, lat = df.esv$Lat, type = "pie",
+                chartdata = df.esv[2:6],
                 popup = popupArgs(html = my_popups))
 # Display pie chart map
-p
+p.esv
+
+# Species tab
+my_popups <- paste("Watershed: ", df.species$WSCSDA_EN, "<br>",
+                   paste(names(df.species[2]), ": ", sep = ""), df.species[, 2], "<br>", 
+                   paste(names(df.species[3]), ": ", sep = ""), df.species[, 3], "<br>", 
+                   paste(names(df.species[4]), ": ", sep = ""), df.species[, 4], "<br>",
+                   paste(names(df.species[5]), ": ", sep = ""), df.species[, 5], "<br>",
+                   paste(names(df.species[6]), ": ", sep = ""), df.species[, 6], "<br>")
+
+# Generate leaflet map with pie charts
+p.species <- leaflet(simplified) %>%
+  addTiles() %>%
+  # addProviderTiles(providers$Stamen.Terrain) %>%
+  setView(lat = 60, lng = -95, zoom = 3) %>%
+  addPolygons(data=simplified, color= "darkgrey", stroke = TRUE, 
+              weight = 1, smoothFactor = 0.2,
+              fillColor = pal, fillOpacity = 0.5
+  )  %>%
+  addMinicharts(lng = df.species$Long, lat = df.species$Lat, type = "pie",
+                chartdata = df.species[2:6],
+                popup = popupArgs(html = my_popups))
+# Display pie chart map
+p.species
+
+# Genus tab
+my_popups <- paste("Watershed: ", df.genus$WSCSDA_EN, "<br>",
+                   paste(names(df.genus[2]), ": ", sep = ""), df.genus[, 2], "<br>", 
+                   paste(names(df.genus[3]), ": ", sep = ""), df.genus[, 3], "<br>", 
+                   paste(names(df.genus[4]), ": ", sep = ""), df.genus[, 4], "<br>",
+                   paste(names(df.genus[5]), ": ", sep = ""), df.genus[, 5], "<br>",
+                   paste(names(df.genus[6]), ": ", sep = ""), df.genus[, 6], "<br>")
+
+# Generate leaflet map with pie charts
+p.genus <- leaflet(simplified) %>%
+  addTiles() %>%
+  # addProviderTiles(providers$Stamen.Terrain) %>%
+  setView(lat = 60, lng = -95, zoom = 3) %>%
+  addPolygons(data=simplified, color= "darkgrey", stroke = TRUE, 
+              weight = 1, smoothFactor = 0.2,
+              fillColor = pal, fillOpacity = 0.5
+  )  %>%
+  addMinicharts(lng = df.genus$Long, lat = df.genus$Lat, type = "pie",
+                chartdata = df.genus[2:6],
+                popup = popupArgs(html = my_popups))
+# Display pie chart map
+p.genus
+
+# Family tab
+my_popups <- paste("Watershed: ", df.family$WSCSDA_EN, "<br>",
+                   paste(names(df.family[2]), ": ", sep = ""), df.family[, 2], "<br>", 
+                   paste(names(df.family[3]), ": ", sep = ""), df.family[, 3], "<br>", 
+                   paste(names(df.family[4]), ": ", sep = ""), df.family[, 4], "<br>",
+                   paste(names(df.family[5]), ": ", sep = ""), df.family[, 5], "<br>",
+                   paste(names(df.family[6]), ": ", sep = ""), df.family[, 6], "<br>")
+
+# Generate leaflet map with pie charts
+p.family <- leaflet(simplified) %>%
+  addTiles() %>%
+  # addProviderTiles(providers$Stamen.Terrain) %>%
+  setView(lat = 60, lng = -95, zoom = 3) %>%
+  addPolygons(data=simplified, color= "darkgrey", stroke = TRUE, 
+              weight = 1, smoothFactor = 0.2,
+              fillColor = pal, fillOpacity = 0.5
+  )  %>%
+  addMinicharts(lng = df.family$Long, lat = df.family$Lat, type = "pie",
+                chartdata = df.family[2:6],
+                popup = popupArgs(html = my_popups))
+# Display pie chart map
+p.family
+
+# Taxon tab
+my_popups <- paste("Watershed: ", df.taxon$WSCSDA_EN, "<br>",
+                   paste(names(df.taxon[2]), ": ", sep = ""), df.taxon[, 2], "<br>", 
+                   paste(names(df.taxon[3]), ": ", sep = ""), df.taxon[, 3], "<br>", 
+                   paste(names(df.taxon[4]), ": ", sep = ""), df.taxon[, 4], "<br>",
+                   paste(names(df.taxon[5]), ": ", sep = ""), df.taxon[, 5], "<br>",
+                   paste(names(df.taxon[6]), ": ", sep = ""), df.taxon[, 6], "<br>")
+
+# Generate leaflet map with pie charts
+p.taxon <- leaflet(simplified) %>%
+  addTiles() %>%
+  # addProviderTiles(providers$Stamen.Terrain) %>%
+  setView(lat = 60, lng = -95, zoom = 3) %>%
+  addPolygons(data=simplified, color= "darkgrey", stroke = TRUE, 
+              weight = 1, smoothFactor = 0.2,
+              fillColor = pal, fillOpacity = 0.5
+  )  %>%
+  addMinicharts(lng = df.taxon$Long, lat = df.taxon$Lat, type = "pie",
+                chartdata = df.taxon[2:6],
+                popup = popupArgs(html = my_popups))
+# Display pie chart map
+p.taxon
 
