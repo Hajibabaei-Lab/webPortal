@@ -46,7 +46,7 @@ tax <- cbind(tax, data.frame(do.call('rbind', strsplit(as.character(tax$File_Nam
 names(tax)[34:43] <- c("Project", "Group", "Substrate", "Site", "Sample", "Replicate", "Date", "Marker", "IlluminaRun", "Amplicon")
 
 # Put the field back together to just keep key fields
-tax$File_Name <- paste(tax$Project, tax$Group, tax$Substrate, tax$Site, tax$Sample, tax$Replicate, tax$Date, tax$Marker, sep="-")
+tax$File_Name <- paste(tax$Project, tax$Group, tax$Substrate, tax$Site, tax$Sample, tax$Replicate, tax$Date, tax$Marker, sep = "-")
 
 # Remove this sample with missing lat/lon info from taxonomy file right away, can't work with this sequence data
 tax <- tax[!tax$File_Name == "STREAM-DFONLX-B-LALD-000X-X-20201011-COI",]
@@ -55,10 +55,10 @@ tax <- tax[!tax$File_Name == "STREAM-DFONLX-B-LALD-000X-X-20201011-COI",]
 # Create taxon field for assignments
 ## For 200bp COI query, 95% confidence at species rank (sBP >= 0.70), 
 ## 99% confidence genus (gBP >= 0.30), family (fBP >= 0.20), no cutoff needed for order+
-tax$taxon <- ifelse(tax$sBP >= 0.70, paste(tax$Phylum, tax$Class, tax$Species, sep=";"),
-                    ifelse(tax$gBP >= 0.30, paste(tax$Phylum, tax$Class, tax$Genus, sep=";"),
-                           ifelse(tax$fBP >= 0.20, paste(tax$Phylum, tax$Class, tax$Family, sep=";"),
-                                  paste(tax$Phylum, tax$Class, tax$Order, sep=";"))))
+tax$taxon <- ifelse(tax$sBP >= 0.70, paste(tax$Phylum, tax$Class, tax$Species, sep = ";"),
+                    ifelse(tax$gBP >= 0.30, paste(tax$Phylum, tax$Class, tax$Genus, sep = ";"),
+                           ifelse(tax$fBP >= 0.20, paste(tax$Phylum, tax$Class, tax$Family, sep = ";"),
+                                  paste(tax$Phylum, tax$Class, tax$Order, sep = ";"))))
 
 
 ###############################
@@ -88,7 +88,7 @@ names(shp)[8] <- "TaxonRichness"
 
 # calc esv.richness
 # Get unique taxon and site per File_Name
-esv.stats <- unique(tax[,c("File_Name", "GlobalESV", "Site")])
+esv.stats <- unique(tax[, c("File_Name", "GlobalESV", "Site")])
 # Map taxon, samples, and sites to s3 by File_Name
 esv.meta <- merge(esv.stats, s3, by = "File_Name", all.x = TRUE)
 # calc richness
@@ -102,7 +102,7 @@ names(shp)[9] <- "ESVrichness"
 # filter to only keep species id's, 95% confidence, 200bp, COI, sBP >= 0.70
 tax.sp <- tax[tax$sBP >= 0.70,]
 # Get unique taxon and site per File_Name
-species.stats <- unique(tax.sp[,c("File_Name", "Species", "Site")])
+species.stats <- unique(tax.sp[, c("File_Name", "Species", "Site")])
 # Map taxon, samples, and sites to s3 by File_Name
 species.meta <- merge(species.stats, s3, by = "File_Name", all.x = TRUE)
 # calc richness
@@ -116,7 +116,7 @@ names(shp)[10] <- "SpeciesRichness"
 # filter to only keep species id's, 99% confidence, 200bp, COI, gBP >= 0.30
 tax.g <- tax[tax$gBP >= 0.30,]
 # Get unique taxon and site per File_Name
-genus.stats <- unique(tax.g[,c("File_Name", "Genus", "Site")])
+genus.stats <- unique(tax.g[, c("File_Name", "Genus", "Site")])
 # Map taxon, samples, and sites to s3 by File_Name
 genus.meta <- merge(genus.stats, s3, by = "File_Name", all.x = TRUE)
 # calc richness
@@ -130,7 +130,7 @@ names(shp)[11] <- "GenusRichness"
 # filter to only keep species id's, 99% confidence, 200bp, COI, fBP >= 0.20
 tax.f <- tax[tax$fBP >= 0.20,]
 # Get unique taxon and site per File_Name
-family.stats <- unique(tax.f[,c("File_Name", "Family", "Site")])
+family.stats <- unique(tax.f[, c("File_Name", "Family", "Site")])
 # Map taxon, samples, and sites to s3 by File_Name
 family.meta <- merge(family.stats, s3, by = "File_Name", all.x = TRUE)
 # calc richness
@@ -153,8 +153,8 @@ var_cut <- cut(shp$ESVrichness, breaks = 5)
 #levels(var_cut)
 # [1] "(-59.4,1.19e+04]"    "(1.19e+04,2.38e+04]" "(2.38e+04,3.57e+04]"
 # [4] "(3.57e+04,4.75e+04]" "(4.75e+04,5.95e+04]"
-mybins <- c(0,1,11900,23800,35700,47500,59500)
-mypalette <- colorBin( palette="YlOrBr", domain=shp$ESVrichness, na.color="transparent", bins=mybins)
+mybins <- c(0, 1, 11900, 23800, 35700, 47500, 59500)
+mypalette <- colorBin(palette = "YlOrBr", domain = shp$ESVrichness, na.color = "transparent", bins = mybins)
 mylabels <- c("0", "<=11,900", "<=23,800", "<=35,700", "<=47,500", "<=59,500")
 
 # ESV richness
@@ -162,15 +162,15 @@ m.esv <- leaflet(simplified) %>%
   addTiles()  %>% 
   # addProviderTiles(providers$Stamen.Terrain) %>%
   setView(lat = 60, lng = -95, zoom = 3) %>%
-  addPolygons(data=shp, color= "darkgrey", stroke = TRUE, weight = 1, smoothFactor = 0.2,
+  addPolygons(data = shp, color = "darkgrey", stroke = TRUE, weight = 1, smoothFactor = 0.2,
               fillColor = ~mypalette(ESVrichness), fillOpacity = 1,
               popup = paste("Watershed: ", shp$WSCSDA_EN, "<br>",
                             "Richness: ", shp$ESVrichness, "ESVs<br>", 
                             "Sites: ", shp$sites, "<br>", 
                             "Samples: ", shp$samples, "<br>"))  %>%
-  addLegend(data=shp, pal=mypalette, values=~ESVrichness, 
-            opacity=1, title = "ESV Richness", position = "bottomleft",
-            labFormat = function(type, cuts, p) {paste0(mylabels)})
+  addLegend(data = shp, pal = mypalette, values = ~ESVrichness, 
+            opacity = 1, title = "ESV Richness", position = "bottomleft",
+            labFormat = function(type, cuts, p){paste0(mylabels)})
 # Display chloropleth
 m.esv
 
@@ -181,8 +181,8 @@ var_cut <- cut(shp$SpeciesRichness, breaks = 5)
 #levels(var_cut)
 # [1] "(-0.782,156]" "(156,313]"    "(313,469]"    "(469,626]"   
 # [5] "(626,783]" 
-mybins <- c(0,1,156,313,469,626,783)
-mypalette <- colorBin( palette="YlOrBr", domain=shp$SpeciesRichness, na.color="transparent", bins=mybins)
+mybins <- c(0, 1, 156, 313, 469, 626, 783)
+mypalette <- colorBin(palette = "YlOrBr", domain = shp$SpeciesRichness, na.color = "transparent", bins = mybins)
 mylabels <- c("0", "<=156", "<=313", "<=469", "<=626", "<=783")
 
 # species richness
@@ -190,15 +190,15 @@ m.species <- leaflet(simplified) %>%
   addTiles()  %>% 
   # addProviderTiles(providers$Stamen.Terrain) %>%
   setView(lat = 60, lng = -95, zoom = 3) %>%
-  addPolygons(data=shp, color= "darkgrey", stroke = TRUE, weight = 1, smoothFactor = 0.2,
+  addPolygons(data = shp, color = "darkgrey", stroke = TRUE, weight = 1, smoothFactor = 0.2,
               fillColor = ~mypalette(SpeciesRichness), fillOpacity = 1,
               popup = paste("Watershed: ", shp$WSCSDA_EN, "<br>",
                             "Richness: ", shp$SpeciesRichness, "species<br>", 
                             "Sites: ", shp$sites, "<br>", 
                             "Samples: ", shp$samples, "<br>"))  %>%
-  addLegend(data=shp, pal=mypalette, values=~SpeciesRichness, 
-            opacity=1, title = "Species Richness", position = "bottomleft",
-            labFormat = function(type, cuts, p) {paste0(mylabels)})
+  addLegend(data = shp, pal = mypalette, values = ~SpeciesRichness, 
+            opacity = 1, title = "Species Richness", position = "bottomleft",
+            labFormat = function(type, cuts, p){paste0(mylabels)})
 # Display chloropleth
 m.species
 
@@ -209,8 +209,8 @@ var_cut <- cut(shp$GenusRichness, breaks = 5)
 #levels(var_cut)
 # [1] "(-0.681,136]" "(136,272]"    "(272,409]"    "(409,545]"   
 # [5] "(545,682]" 
-mybins <- c(0,1,136,272,409,545,682)
-mypalette <- colorBin( palette="YlOrBr", domain=shp$GenusRichness, na.color="transparent", bins=mybins)
+mybins <- c(0, 1, 136, 272, 409, 545, 682)
+mypalette <- colorBin(palette = "YlOrBr", domain = shp$GenusRichness, na.color = "transparent", bins = mybins)
 mylabels <- c("0", "<=136", "<=272", "<=409", "<=545", "<=682")
 
 # genus richness
@@ -218,15 +218,15 @@ m.genus <- leaflet(simplified) %>%
   addTiles()  %>% 
   # addProviderTiles(providers$Stamen.Terrain) %>%
   setView(lat = 60, lng = -95, zoom = 3) %>%
-  addPolygons(data=shp, color= "darkgrey", stroke = TRUE, weight = 1, smoothFactor = 0.2,
+  addPolygons(data = shp, color = "darkgrey", stroke = TRUE, weight = 1, smoothFactor = 0.2,
               fillColor = ~mypalette(GenusRichness), fillOpacity = 1,
               popup = paste("Watershed: ", shp$WSCSDA_EN, "<br>",
                             "Richness: ", shp$GenusRichness, "genera<br>", 
                             "Sites: ", shp$sites, "<br>", 
                             "Samples: ", shp$samples, "<br>"))  %>%
-  addLegend(data=shp, pal=mypalette, values=~GenusRichness, 
-            opacity=1, title = "Genus Richness", position = "bottomleft",
-            labFormat = function(type, cuts, p) {paste0(mylabels)})
+  addLegend(data = shp, pal = mypalette, values = ~GenusRichness, 
+            opacity = 1, title = "Genus Richness", position = "bottomleft",
+            labFormat = function(type, cuts, p){paste0(mylabels)})
 # Display chloropleth
 m.genus
 
@@ -236,8 +236,8 @@ m.genus
 var_cut <- cut(shp$FamilyRichness, breaks = 5)
 #levels(var_cut)
 # [1] "(-0.375,75]" "(75,150]"    "(150,225]"   "(225,300]"   "(300,375]" 
-mybins <- c(0,1,75,150,225,300,375)
-mypalette <- colorBin( palette="YlOrBr", domain=shp$FamilyRichness, na.color="transparent", bins=mybins)
+mybins <- c(0, 1, 75, 150, 225, 300, 375)
+mypalette <- colorBin(palette = "YlOrBr", domain = shp$FamilyRichness, na.color = "transparent", bins = mybins)
 mylabels <- c("0", "<=75", "<=150", "<=225", "<=300", "<=375")
 
 # family richness
@@ -245,15 +245,15 @@ m.family <- leaflet(simplified) %>%
   addTiles()  %>% 
   # addProviderTiles(providers$Stamen.Terrain) %>%
   setView(lat = 60, lng = -95, zoom = 3) %>%
-  addPolygons(data=shp, color= "darkgrey", stroke = TRUE, weight = 1, smoothFactor = 0.2,
+  addPolygons(data = shp, color = "darkgrey", stroke = TRUE, weight = 1, smoothFactor = 0.2,
               fillColor = ~mypalette(FamilyRichness), fillOpacity = 1,
               popup = paste("Watershed: ", shp$WSCSDA_EN, "<br>",
                             "Richness: ", shp$FamilyRichness, "families<br>", 
                             "Sites: ", shp$sites, "<br>", 
                             "Samples: ", shp$samples, "<br>"))  %>%
-  addLegend(data=shp, pal=mypalette, values=~FamilyRichness, 
-            opacity=1, title = "Family Richness", position = "bottomleft",
-            labFormat = function(type, cuts, p) {paste0(mylabels)})
+  addLegend(data = shp, pal = mypalette, values = ~FamilyRichness, 
+            opacity = 1, title = "Family Richness", position = "bottomleft",
+            labFormat = function(type, cuts, p){paste0(mylabels)})
 # Display chloropleth
 m.family
 
@@ -264,8 +264,8 @@ var_cut <- cut(shp$TaxonRichness, breaks = 5)
 #levels(var_cut)
 # [1] "(-1.6,320]"         "(320,640]"          "(640,960]"         
 # [4] "(960,1.28e+03]"     "(1.28e+03,1.6e+03]"
-mybins <- c(0,1,320,640,960,1280,1600)
-mypalette <- colorBin( palette="YlOrBr", domain=shp$TaxonRichness, na.color="transparent", bins=mybins)
+mybins <- c(0, 1, 320, 640, 960, 1280, 1600)
+mypalette <- colorBin(palette = "YlOrBr", domain = shp$TaxonRichness, na.color = "transparent", bins = mybins)
 mylabels <- c("0", "<=320", "<=640", "<=960", "<=1280", "<=1600")
 
 # family richness
@@ -273,15 +273,15 @@ m.taxon <- leaflet(simplified) %>%
   addTiles()  %>% 
   # addProviderTiles(providers$Stamen.Terrain) %>%
   setView(lat = 60, lng = -95, zoom = 3) %>%
-  addPolygons(data=shp, color= "darkgrey", stroke = TRUE, weight = 1, smoothFactor = 0.2,
+  addPolygons(data = shp, color = "darkgrey", stroke = TRUE, weight = 1, smoothFactor = 0.2,
               fillColor = ~mypalette(TaxonRichness), fillOpacity = 1,
               popup = paste("Watershed: ", shp$WSCSDA_EN, "<br>",
                             "Richness: ", shp$TaxonRichness, "taxa<br>", 
                             "Sites: ", shp$sites, "<br>", 
                             "Samples: ", shp$samples, "<br>"))  %>%
-  addLegend(data=shp, pal=mypalette, values=~TaxonRichness, 
-            opacity=1, title = "Taxon Richness", position = "bottomleft",
-            labFormat = function(type, cuts, p) {paste0(mylabels)})
+  addLegend(data = shp, pal = mypalette, values = ~TaxonRichness, 
+            opacity = 1, title = "Taxon Richness", position = "bottomleft",
+            labFormat = function(type, cuts, p){paste0(mylabels)})
 # Display chloropleth
 m.taxon
 
@@ -318,29 +318,29 @@ make_minichart_df <- function(df, rank){
   
   # Keep key fields, File_Name, Order, Family, rank, site
   # filter by bootstrap values where needed
-  if (rank=="GlobalESV") {
-    df <- df[,c("File_Name","Order","Family","GlobalESV","Site")]
-  } else if (rank=="Species") {
-    df <- df[df$sBP >=0.70,]
-    df <- df[,c("File_Name","Order","Family","Species","Site")]
-  } else if (rank=="Genus") {
-    df <- df[df$gBP >=0.30,]
-    df <- df[,c("File_Name","Order","Family","Genus","Site")]
-  } else if (rank=="Family") {
-    df <- df[df$fBP >=0.20,]
-    df <- df[,c("File_Name","Order","Family","Family","Site")]
+  if (rank == "GlobalESV") {
+    df <- df[, c("File_Name","Order","Family","GlobalESV","Site")]
+  } else if (rank == "Species") {
+    df <- df[df$sBP >= 0.70,]
+    df <- df[, c("File_Name","Order","Family","Species","Site")]
+  } else if (rank == "Genus") {
+    df <- df[df$gBP >= 0.30,]
+    df <- df[, c("File_Name","Order","Family","Genus","Site")]
+  } else if (rank == "Family") {
+    df <- df[df$fBP >= 0.20,]
+    df <- df[, c("File_Name","Order","Family","Family","Site")]
   } else {
-    df <- df[,c("File_Name","Order","Family","taxon","Site")]
+    df <- df[, c("File_Name","Order","Family","taxon","Site")]
   }
 
   # Map taxon, samples, and sites to s3 by File_Name
   tax.meta <- merge(unique(df), unique(s3), by = "File_Name", all.x = TRUE)
   
   # Group by WSCSDA and unique taxon counts, sites, and File_Name samples
-  length_unique_rank <- paste0('length(unique(',rank,'))')
+  length_unique_rank <- paste0('length(unique(', rank, '))')
   tax.rank <- data.frame(tax.meta %>% 
                            group_by(WSCSDA, Order) %>% 
-                           dplyr::summarize(rank=n_distinct(!!as.symbol(rank))))
+                           dplyr::summarize(rank = n_distinct(!!as.symbol(rank))))
   
   # Convert long to wide format and remove NAs
   tax.rank.wide <- dcast(tax.rank, WSCSDA ~ Order, value.var = "rank")
@@ -374,7 +374,7 @@ a.esv <- leaflet(simplified) %>%
   addTiles() %>%
   # addProviderTiles(providers$Stamen.Terrain) %>%
   setView(lat = 60, lng = -95, zoom = 3) %>%
-  addPolygons(data=simplified, color= "darkgrey", stroke = TRUE, 
+  addPolygons(data = simplified, color = "darkgrey", stroke = TRUE, 
               weight = 1, smoothFactor = 0.2,
               fillColor = pal, fillOpacity = 0.5
   )  %>%
@@ -397,7 +397,7 @@ a.species <- leaflet(simplified) %>%
   addTiles() %>%
   # addProviderTiles(providers$Stamen.Terrain) %>%
   setView(lat = 60, lng = -95, zoom = 3) %>%
-  addPolygons(data=simplified, color= "darkgrey", stroke = TRUE, 
+  addPolygons(data = simplified, color = "darkgrey", stroke = TRUE, 
               weight = 1, smoothFactor = 0.2,
               fillColor = pal, fillOpacity = 0.5
   )  %>%
@@ -420,7 +420,7 @@ a.genus <- leaflet(simplified) %>%
   addTiles() %>%
   # addProviderTiles(providers$Stamen.Terrain) %>%
   setView(lat = 60, lng = -95, zoom = 3) %>%
-  addPolygons(data=simplified, color= "darkgrey", stroke = TRUE, 
+  addPolygons(data = simplified, color = "darkgrey", stroke = TRUE, 
               weight = 1, smoothFactor = 0.2,
               fillColor = pal, fillOpacity = 0.5
   )  %>%
@@ -443,7 +443,7 @@ a.family <- leaflet(simplified) %>%
   addTiles() %>%
   # addProviderTiles(providers$Stamen.Terrain) %>%
   setView(lat = 60, lng = -95, zoom = 3) %>%
-  addPolygons(data=simplified, color= "darkgrey", stroke = TRUE, 
+  addPolygons(data = simplified, color = "darkgrey", stroke = TRUE, 
               weight = 1, smoothFactor = 0.2,
               fillColor = pal, fillOpacity = 0.5
   )  %>%
@@ -466,7 +466,7 @@ a.taxon <- leaflet(simplified) %>%
   addTiles() %>%
   # addProviderTiles(providers$Stamen.Terrain) %>%
   setView(lat = 60, lng = -95, zoom = 3) %>%
-  addPolygons(data=simplified, color= "darkgrey", stroke = TRUE, 
+  addPolygons(data = simplified, color = "darkgrey", stroke = TRUE, 
               weight = 1, smoothFactor = 0.2,
               fillColor = pal, fillOpacity = 0.5
   )  %>%
@@ -495,29 +495,29 @@ make_minichart_df <- function(df, rank){
   
   # Keep key fields, File_Name, Order, Family, rank, site
   # filter by bootstrap values where needed
-  if (rank=="GlobalESV") {
-    df <- df[,c("File_Name","Phylum","GlobalESV","Site")]
-  } else if (rank=="Species") {
-    df <- df[df$sBP >=0.70,]
-    df <- df[,c("File_Name","Phylum","Species","Site")]
-  } else if (rank=="Genus") {
-    df <- df[df$gBP >=0.30,]
-    df <- df[,c("File_Name","Phylum","Genus","Site")]
-  } else if (rank=="Family") {
-    df <- df[df$fBP >=0.20,]
-    df <- df[,c("File_Name","Phylum","Family","Site")]
+  if (rank == "GlobalESV") {
+    df <- df[, c("File_Name","Phylum","GlobalESV","Site")]
+  } else if (rank == "Species") {
+    df <- df[df$sBP >= 0.70,]
+    df <- df[, c("File_Name","Phylum","Species","Site")]
+  } else if (rank == "Genus") {
+    df <- df[df$gBP >= 0.30,]
+    df <- df[, c("File_Name","Phylum","Genus","Site")]
+  } else if (rank == "Family") {
+    df <- df[df$fBP >= 0.20,]
+    df <- df[, c("File_Name","Phylum","Family","Site")]
   } else {
-    df <- df[,c("File_Name","Phylum","taxon","Site")]
+    df <- df[, c("File_Name","Phylum","taxon","Site")]
   }
   
   # Map taxon, samples, and sites to s3 by File_Name
   tax.meta <- merge(unique(df), unique(s3), by = "File_Name", all.x = TRUE)
   
   # Group by WSCSDA and unique taxon counts, sites, and File_Name samples
-  length_unique_rank <- paste0('length(unique(',rank,'))')
+  length_unique_rank <- paste0('length(unique(', rank, '))')
   tax.rank <- data.frame(tax.meta %>% 
                            group_by(WSCSDA, Phylum) %>% 
-                           dplyr::summarize(rank=n_distinct(!!as.symbol(rank))))
+                           dplyr::summarize(rank = n_distinct(!!as.symbol(rank))))
   
   # Convert long to wide format and remove NAs
   tax.rank.wide <- dcast(tax.rank, WSCSDA ~ Phylum, value.var = "rank")
@@ -547,7 +547,7 @@ p.esv <- leaflet(simplified) %>%
   addTiles() %>%
   # addProviderTiles(providers$Stamen.Terrain) %>%
   setView(lat = 60, lng = -95, zoom = 3) %>%
-  addPolygons(data=simplified, color= "darkgrey", stroke = TRUE, 
+  addPolygons(data = simplified, color = "darkgrey", stroke = TRUE, 
               weight = 1, smoothFactor = 0.2,
               fillColor = pal, fillOpacity = 0.5
   )  %>%
@@ -570,7 +570,7 @@ p.species <- leaflet(simplified) %>%
   addTiles() %>%
   # addProviderTiles(providers$Stamen.Terrain) %>%
   setView(lat = 60, lng = -95, zoom = 3) %>%
-  addPolygons(data=simplified, color= "darkgrey", stroke = TRUE, 
+  addPolygons(data = simplified, color = "darkgrey", stroke = TRUE, 
               weight = 1, smoothFactor = 0.2,
               fillColor = pal, fillOpacity = 0.5
   )  %>%
@@ -593,7 +593,7 @@ p.genus <- leaflet(simplified) %>%
   addTiles() %>%
   # addProviderTiles(providers$Stamen.Terrain) %>%
   setView(lat = 60, lng = -95, zoom = 3) %>%
-  addPolygons(data=simplified, color= "darkgrey", stroke = TRUE, 
+  addPolygons(data = simplified, color = "darkgrey", stroke = TRUE, 
               weight = 1, smoothFactor = 0.2,
               fillColor = pal, fillOpacity = 0.5
   )  %>%
@@ -616,7 +616,7 @@ p.family <- leaflet(simplified) %>%
   addTiles() %>%
   # addProviderTiles(providers$Stamen.Terrain) %>%
   setView(lat = 60, lng = -95, zoom = 3) %>%
-  addPolygons(data=simplified, color= "darkgrey", stroke = TRUE, 
+  addPolygons(data = simplified, color = "darkgrey", stroke = TRUE, 
               weight = 1, smoothFactor = 0.2,
               fillColor = pal, fillOpacity = 0.5
   )  %>%
@@ -639,13 +639,12 @@ p.taxon <- leaflet(simplified) %>%
   addTiles() %>%
   # addProviderTiles(providers$Stamen.Terrain) %>%
   setView(lat = 60, lng = -95, zoom = 3) %>%
-  addPolygons(data=simplified, color= "darkgrey", stroke = TRUE, 
+  addPolygons(data = simplified, color = "darkgrey", stroke = TRUE, 
               weight = 1, smoothFactor = 0.2,
               fillColor = pal, fillOpacity = 0.5
   )  %>%
   addMinicharts(lng = df.taxon$Long, lat = df.taxon$Lat, type = "pie",
-                chartdata = df.taxon[2:6],
-                popup = popupArgs(html = my_popups))
+                chartdata = df.taxon[2:6], popup = popupArgs(html = my_popups))
 # Display pie chart map
 p.taxon
 
