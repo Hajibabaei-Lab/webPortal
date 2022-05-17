@@ -1,4 +1,4 @@
-# Teresita M. Porter, May 3, 2002
+# Teresita M. Porter, May 10, 2022
 # WWF watershed .shp files from Mike Wright
 # Data cleaned by Artin Mashayekhi
 # plot richness as cloropleth
@@ -77,12 +77,6 @@ tax.stats <- unique(tax[,c("File_Name", "taxon", "Site")])
 # Map taxon, samples, and sites to s3 by File_Name
 tax.meta <- merge(tax.stats, s3, by = "File_Name", all.x = TRUE)
 
-# # File_Name in taxonomy file that don't match anything in metadata
-# setdiff(tax.stats$File_Name, s3$File_Name)
-
-# # Fix this when the dataset entry is completed
-# tax.meta <- tax.meta[!tax.meta$File_Name == "STREAM-DFONLX-B-LALD-000X-X-20201011-COI",]
-
 # Group by WSCSDA and unique taxon counts, sites, and File_Name samples
 tax.richness <- data.frame(tax.meta %>% group_by(WSCSDA) %>% summarise(richness = n_distinct(taxon)))
 tax.sites <- merge(data.frame(tax.meta %>% group_by(WSCSDA) %>% summarise(sites = n_distinct(Site))), tax.richness, by = "WSCSDA", all.x = TRUE)
@@ -90,33 +84,206 @@ tax.final <- merge(data.frame(tax.meta %>% group_by(WSCSDA) %>% summarise(sample
 
 # Add richness, samples, and sites to the .shp file
 shp <- merge(simplified, tax.final, by = "WSCSDA", all.x = TRUE)
+names(shp)[8] <- "TaxonRichness"
+
+# calc esv.richness
+# Get unique taxon and site per File_Name
+esv.stats <- unique(tax[,c("File_Name", "GlobalESV", "Site")])
+# Map taxon, samples, and sites to s3 by File_Name
+esv.meta <- merge(esv.stats, s3, by = "File_Name", all.x = TRUE)
+# calc richness
+esv.richness <- data.frame(esv.meta %>% group_by(WSCSDA) %>% summarise(richness = n_distinct(GlobalESV)))
+
+# Add richness, samples, and sites to the .shp file
+shp <- merge(shp, esv.richness, by = "WSCSDA", all.x = TRUE)
+names(shp)[9] <- "ESVrichness"
+
+# calc species.richness see https://github.com/terrimporter/CO1Classifier for cutoffs
+# filter to only keep species id's, 95% confidence, 200bp, COI, sBP >= 0.70
+tax.sp <- tax[tax$sBP >= 0.70,]
+# Get unique taxon and site per File_Name
+species.stats <- unique(tax.sp[,c("File_Name", "Species", "Site")])
+# Map taxon, samples, and sites to s3 by File_Name
+species.meta <- merge(species.stats, s3, by = "File_Name", all.x = TRUE)
+# calc richness
+species.richness <- data.frame(species.meta %>% group_by(WSCSDA) %>% summarise(richness = n_distinct(Species)))
+
+# Add richness, samples, and sites to the .shp file
+shp <- merge(shp, species.richness, by = "WSCSDA", all.x = TRUE)
+names(shp)[10] <- "SpeciesRichness"
+
+# calc genus.richness
+# filter to only keep species id's, 99% confidence, 200bp, COI, gBP >= 0.30
+tax.g <- tax[tax$gBP >= 0.30,]
+# Get unique taxon and site per File_Name
+genus.stats <- unique(tax.g[,c("File_Name", "Genus", "Site")])
+# Map taxon, samples, and sites to s3 by File_Name
+genus.meta <- merge(genus.stats, s3, by = "File_Name", all.x = TRUE)
+# calc richness
+genus.richness <- data.frame(genus.meta %>% group_by(WSCSDA) %>% summarise(richness = n_distinct(Genus)))
+
+# Add richness, samples, and sites to the .shp file
+shp <- merge(shp, genus.richness, by = "WSCSDA", all.x = TRUE)
+names(shp)[11] <- "GenusRichness"
+
+# calc family.richness
+# filter to only keep species id's, 99% confidence, 200bp, COI, fBP >= 0.20
+tax.f <- tax[tax$fBP >= 0.20,]
+# Get unique taxon and site per File_Name
+family.stats <- unique(tax.f[,c("File_Name", "Family", "Site")])
+# Map taxon, samples, and sites to s3 by File_Name
+family.meta <- merge(family.stats, s3, by = "File_Name", all.x = TRUE)
+# calc richness
+family.richness <- data.frame(family.meta %>% group_by(WSCSDA) %>% summarise(richness = n_distinct(Family)))
+
+# Add richness, samples, and sites to the .shp file
+shp <- merge(shp, family.richness, by = "WSCSDA", all.x = TRUE)
+names(shp)[12] <- "FamilyRichness"
+
 # Set NAs to zero, gives warning but still works
-shp[, 6:8][is.na(shp[, 6:8])] <- 0
+shp[, 6:12][is.na(shp[, 6:12])] <- 0
 
+###############################
+# create plots for each tab in Rmd
+
+# ESV tab
 # Create color palette
-mybins <- c(0,1,500,1000,1500,Inf)
-mypalette <- colorBin( palette="YlOrBr", domain=shp$richness, na.color="transparent", bins=mybins)
-mylabels <- c("0", "<=500", "<=1000", "<=1500", ">1500")
+#range(shp$ESVrichness)
+var_cut <- cut(shp$ESVrichness, breaks = 5)
+#levels(var_cut)
+# [1] "(-59.4,1.19e+04]"    "(1.19e+04,2.38e+04]" "(2.38e+04,3.57e+04]"
+# [4] "(3.57e+04,4.75e+04]" "(4.75e+04,5.95e+04]"
+mybins <- c(0,1,11900,23800,35700,47500,59500)
+mypalette <- colorBin( palette="YlOrBr", domain=shp$ESVrichness, na.color="transparent", bins=mybins)
+mylabels <- c("0", "<=11,900", "<=23,800", "<=35,700", "<=47,500", "<=59,500")
 
-# pal.tmp <- RColorBrewer::brewer.pal(5, "YlOrBr")
-# pal <- colorNumeric(palette = pal.tmp, domain = shp$richness)
-
-# Basic chloropleth with leaflet
-m <- leaflet(simplified) %>% 
+# ESV richness
+m.esv <- leaflet(simplified) %>% 
   addTiles()  %>% 
   # addProviderTiles(providers$Stamen.Terrain) %>%
   setView(lat = 60, lng = -95, zoom = 3) %>%
   addPolygons(data=shp, color= "darkgrey", stroke = TRUE, weight = 1, smoothFactor = 0.2,
-              fillColor = ~mypalette(richness), fillOpacity = 1,
+              fillColor = ~mypalette(ESVrichness), fillOpacity = 1,
               popup = paste("Watershed: ", shp$WSCSDA_EN, "<br>",
-                            "Richness: ", shp$richness, "taxa<br>", 
+                            "Richness: ", shp$ESVrichness, "ESVs<br>", 
                             "Sites: ", shp$sites, "<br>", 
                             "Samples: ", shp$samples, "<br>"))  %>%
-  addLegend(data=shp, pal=mypalette, values=~richness, 
-            opacity=1, title = "Richness", position = "bottomleft",
+  addLegend(data=shp, pal=mypalette, values=~ESVrichness, 
+            opacity=1, title = "ESV Richness", position = "bottomleft",
             labFormat = function(type, cuts, p) {paste0(mylabels)})
 # Display chloropleth
-m
+m.esv
+
+# Species tab
+# Create color palette
+#range(shp$SpeciesRichness)
+var_cut <- cut(shp$SpeciesRichness, breaks = 5)
+#levels(var_cut)
+# [1] "(-0.782,156]" "(156,313]"    "(313,469]"    "(469,626]"   
+# [5] "(626,783]" 
+mybins <- c(0,1,156,313,469,626,783)
+mypalette <- colorBin( palette="YlOrBr", domain=shp$SpeciesRichness, na.color="transparent", bins=mybins)
+mylabels <- c("0", "<=156", "<=313", "<=469", "<=626", "<=783")
+
+# species richness
+m.species <- leaflet(simplified) %>% 
+  addTiles()  %>% 
+  # addProviderTiles(providers$Stamen.Terrain) %>%
+  setView(lat = 60, lng = -95, zoom = 3) %>%
+  addPolygons(data=shp, color= "darkgrey", stroke = TRUE, weight = 1, smoothFactor = 0.2,
+              fillColor = ~mypalette(SpeciesRichness), fillOpacity = 1,
+              popup = paste("Watershed: ", shp$WSCSDA_EN, "<br>",
+                            "Richness: ", shp$SpeciesRichness, "species<br>", 
+                            "Sites: ", shp$sites, "<br>", 
+                            "Samples: ", shp$samples, "<br>"))  %>%
+  addLegend(data=shp, pal=mypalette, values=~SpeciesRichness, 
+            opacity=1, title = "Species Richness", position = "bottomleft",
+            labFormat = function(type, cuts, p) {paste0(mylabels)})
+# Display chloropleth
+m.species
+
+# Genus tab
+# Create color palette
+#range(shp$GenusRichness)
+var_cut <- cut(shp$GenusRichness, breaks = 5)
+#levels(var_cut)
+# [1] "(-0.681,136]" "(136,272]"    "(272,409]"    "(409,545]"   
+# [5] "(545,682]" 
+mybins <- c(0,1,136,272,409,545,682)
+mypalette <- colorBin( palette="YlOrBr", domain=shp$GenusRichness, na.color="transparent", bins=mybins)
+mylabels <- c("0", "<=136", "<=272", "<=409", "<=545", "<=682")
+
+# genus richness
+m.genus <- leaflet(simplified) %>% 
+  addTiles()  %>% 
+  # addProviderTiles(providers$Stamen.Terrain) %>%
+  setView(lat = 60, lng = -95, zoom = 3) %>%
+  addPolygons(data=shp, color= "darkgrey", stroke = TRUE, weight = 1, smoothFactor = 0.2,
+              fillColor = ~mypalette(GenusRichness), fillOpacity = 1,
+              popup = paste("Watershed: ", shp$WSCSDA_EN, "<br>",
+                            "Richness: ", shp$GenusRichness, "genera<br>", 
+                            "Sites: ", shp$sites, "<br>", 
+                            "Samples: ", shp$samples, "<br>"))  %>%
+  addLegend(data=shp, pal=mypalette, values=~GenusRichness, 
+            opacity=1, title = "Genus Richness", position = "bottomleft",
+            labFormat = function(type, cuts, p) {paste0(mylabels)})
+# Display chloropleth
+m.genus
+
+# Family tab
+# Create color palette
+#range(shp$FamilyRichness)
+var_cut <- cut(shp$FamilyRichness, breaks = 5)
+#levels(var_cut)
+# [1] "(-0.375,75]" "(75,150]"    "(150,225]"   "(225,300]"   "(300,375]" 
+mybins <- c(0,1,75,150,225,300,375)
+mypalette <- colorBin( palette="YlOrBr", domain=shp$FamilyRichness, na.color="transparent", bins=mybins)
+mylabels <- c("0", "<=75", "<=150", "<=225", "<=300", "<=375")
+
+# family richness
+m.family <- leaflet(simplified) %>% 
+  addTiles()  %>% 
+  # addProviderTiles(providers$Stamen.Terrain) %>%
+  setView(lat = 60, lng = -95, zoom = 3) %>%
+  addPolygons(data=shp, color= "darkgrey", stroke = TRUE, weight = 1, smoothFactor = 0.2,
+              fillColor = ~mypalette(FamilyRichness), fillOpacity = 1,
+              popup = paste("Watershed: ", shp$WSCSDA_EN, "<br>",
+                            "Richness: ", shp$FamilyRichness, "families<br>", 
+                            "Sites: ", shp$sites, "<br>", 
+                            "Samples: ", shp$samples, "<br>"))  %>%
+  addLegend(data=shp, pal=mypalette, values=~FamilyRichness, 
+            opacity=1, title = "Family Richness", position = "bottomleft",
+            labFormat = function(type, cuts, p) {paste0(mylabels)})
+# Display chloropleth
+m.family
+
+# Taxon tab (finest taxonomic level of resolution with good confidence)
+# Create color palette
+#range(shp$TaxonRichness)
+var_cut <- cut(shp$TaxonRichness, breaks = 5)
+#levels(var_cut)
+# [1] "(-1.6,320]"         "(320,640]"          "(640,960]"         
+# [4] "(960,1.28e+03]"     "(1.28e+03,1.6e+03]"
+mybins <- c(0,1,320,640,960,1280,1600)
+mypalette <- colorBin( palette="YlOrBr", domain=shp$TaxonRichness, na.color="transparent", bins=mybins)
+mylabels <- c("0", "<=320", "<=640", "<=960", "<=1280", "<=1600")
+
+# family richness
+m.taxon <- leaflet(simplified) %>% 
+  addTiles()  %>% 
+  # addProviderTiles(providers$Stamen.Terrain) %>%
+  setView(lat = 60, lng = -95, zoom = 3) %>%
+  addPolygons(data=shp, color= "darkgrey", stroke = TRUE, weight = 1, smoothFactor = 0.2,
+              fillColor = ~mypalette(TaxonRichness), fillOpacity = 1,
+              popup = paste("Watershed: ", shp$WSCSDA_EN, "<br>",
+                            "Richness: ", shp$TaxonRichness, "taxa<br>", 
+                            "Sites: ", shp$sites, "<br>", 
+                            "Samples: ", shp$samples, "<br>"))  %>%
+  addLegend(data=shp, pal=mypalette, values=~TaxonRichness, 
+            opacity=1, title = "Taxon Richness", position = "bottomleft",
+            labFormat = function(type, cuts, p) {paste0(mylabels)})
+# Display chloropleth
+m.taxon
 
 # Simplified but with centroid coordinates, included watershed labels too for plotting
 simplified.centroid <- st_centroid(simplified)
@@ -127,79 +294,187 @@ colnames(simplified.centroid) <- c("WSCSDA", "Long", "Lat", "WSCSDA_EN")
 
 ###############################
 # Major Taxa
-major.order <- c("Ephemeroptera", "Plecoptera_Insecta", "Trichoptera", "Odonata")
-major.family <-c("Chironomidae")
-# Get the File_Name, Order, and Family
-tax.major.order <- tax[c("File_Name", "Order")]
-tax.major.family <- tax[c("File_Name", "Family")]
-# Get rid of unwanted orders and families
-tax.major.order2 <- tax.major.order[grepl(paste(major.order, collapse = "|"), tax.major.order$Order),]
-tax.major.family2 <- tax.major.family[grepl(paste(major.family, collapse = "|"), tax.major.family$Family),]
+target_orders <- c("Ephemeroptera", "Plecoptera_Insecta", "Trichoptera", "Odonata")
+target_family <-c("Chironomidae")
 
-# Keep key fields, File_Name, Order, Family, taxon, site
-tax.orderstats <- tax[, c("File_Name", "Order", "taxon", "Site")]
-tax.familystats <- tax[, c("File_Name", "Family", "taxon", "Site")]
+# filter by target taxa
+# COI, 200bp, 99% confidence for any oBP >= 0
+tax.major.orders <- tax[tax$Order %in% target_orders,]
+# COI, 200bp, 99% confidence if fBP >= 0.20
+tax.major.family <- tax[tax$fBP >= 0.20 & 
+                          tax$Family %in% target_family,]
 
-# Map taxon, samples, and sites to s3 by File_Name
-tax.ordermeta <- merge(tax.orderstats, s3, by = "File_Name", all.x = TRUE)
-tax.familymeta <- merge(tax.familystats, s3, by = "File_Name", all.x = TRUE)
+# put together filtered records
+tax.major <- rbind(tax.major.orders, tax.major.family)
 
-# Fix this later
-tax.ordermeta <- tax.ordermeta[!tax.ordermeta$File_Name == "STREAM-DFONLX-B-LALD-000X-X-20201011-COI",]
-tax.familymeta <- tax.familymeta[!tax.familymeta$File_Name == "STREAM-DFONLX-B-LALD-000X-X-20201011-COI",]
+# simplify Plecoptera_Insecta
+tax.major$Order <- gsub("Plecoptera_Insecta", "Plecoptera", tax.major$Order)
 
-# Group by WSCSDA and unique taxon counts, sites, and File_Name samples
-tax.order <- data.frame(tax.ordermeta %>% group_by(WSCSDA, Order) %>% summarise(taxon = n_distinct(taxon)))
-tax.family <- data.frame(tax.familymeta %>% group_by(WSCSDA, Family) %>% summarise(taxon = n_distinct(taxon)))
+# function to create df for plotting minicharts
+make_minichart_df <- function(df, rank){
+  # df options: tax.major
+  # rank options: GlobalESV, Species, Genus, Family, taxon
+  # cutoff options: NA, species sBP >= 0.70, genus gBP >= 0.30, species sBP >= 0.20, NA
+  
+  # Keep key fields, File_Name, Order, Family, rank, site
+  # filter by bootstrap values where needed
+  if (rank=="GlobalESV") {
+    df <- df[,c("File_Name","Order","Family","GlobalESV","Site")]
+  } else if (rank=="Species") {
+    df <- df[df$sBP >=0.70,]
+    df <- df[,c("File_Name","Order","Family","Species","Site")]
+  } else if (rank=="Genus") {
+    df <- df[df$gBP >=0.30,]
+    df <- df[,c("File_Name","Order","Family","Genus","Site")]
+  } else if (rank=="Family") {
+    df <- df[df$fBP >=0.20,]
+    df <- df[,c("File_Name","Order","Family","Family","Site")]
+  } else {
+    df <- df[,c("File_Name","Order","Family","taxon","Site")]
+  }
 
-# Convert long to wide format and remove NAs
-tax.order.wide <- dcast(tax.order, WSCSDA ~ Order, value.var = "taxon")
-tax.order.wide[is.na(tax.order.wide)] <- 0
-tax.family.wide <- dcast(tax.family, WSCSDA ~ Family, value.var = "taxon")
-tax.family.wide[is.na(tax.family.wide)] <- 0
+  # Map taxon, samples, and sites to s3 by File_Name
+  tax.meta <- merge(unique(df), unique(s3), by = "File_Name", all.x = TRUE)
+  
+  # Group by WSCSDA and unique taxon counts, sites, and File_Name samples
+  length_unique_rank <- paste0('length(unique(',rank,'))')
+  tax.rank <- data.frame(tax.meta %>% 
+                           group_by(WSCSDA, Order) %>% 
+                           dplyr::summarize(rank=n_distinct(!!as.symbol(rank))))
+  
+  # Convert long to wide format and remove NAs
+  tax.rank.wide <- dcast(tax.rank, WSCSDA ~ Order, value.var = "rank")
+  tax.rank.wide[is.na(tax.rank.wide)] <- 0
 
-# Keep relevant columns
-tax.order.wide2 <- tax.order.wide[, names(tax.order.wide) %in% major.order]
-tax.order.wide2$WSCSDA <- tax.order.wide$WSCSDA
-tax.family.wide2 <- tax.family.wide[, names(tax.family.wide) %in% major.family]
+  # Combine major taxa, WSCSDA, and coordinates
+  tax.major.final <- merge(tax.rank.wide, simplified.centroid, by = "WSCSDA", all.x = TRUE)
 
-# Combine the 5 major taxa
-tax.major.combo <- tax.order.wide2
-tax.major.combo$Chironomidae <- tax.family.wide2
+}
 
-# Combine major taxa, WSCSDA, and coordinates
-tax.major.final <- merge(tax.major.combo, simplified.centroid, by = "WSCSDA", all.x = TRUE)
-names(tax.major.final)[names(tax.major.final) == 'Plecoptera_Insecta'] <- 'Plecoptera'
+# now get df at correct resolution for each plot of major taxa
+df.esv <- make_minichart_df(tax.major, "GlobalESV")
+df.species <- make_minichart_df(tax.major, "Species")
+df.genus <- make_minichart_df(tax.major, "Genus")
+df.family <- make_minichart_df(tax.major, "Family")
+df.taxon <- make_minichart_df(tax.major, "taxon")
 
-# # display the usual data in the popup
-# my_popups <- simplified %>% 
-#   group_by(WSCSDA_EN) %>% 
-#     mutate(popup = paste0(WSCSDA_EN, "<br>")) %>% 
-#   pull(popup)
-
-my_popups <- paste("Watershed: ", tax.major.final$WSCSDA_EN, "<br>",
-                   "Ephemeroptera: ", tax.major.final$Ephemeroptera, "<br>", 
-                   "Odonata: ", tax.major.final$Odonata, "<br>", 
-                   "Plecoptera: ", tax.major.final$Plecoptera, "<br>",
-                   "Trichoptera: ", tax.major.final$Trichoptera, "<br>",
-                   "Chironomidae: ", tax.major.final$Chironomidae, "<br>")
+# ESV tab
+my_popups <- paste("Watershed: ", prettyNum(df.esv$WSCSDA_EN, big.mark = ","), "<br>",
+                   "Ephemeroptera: ", prettyNum(df.esv$Ephemeroptera, big.mark = ","), "<br>", 
+                   "Odonata: ", prettyNum(df.esv$Odonata, big.mark = ","), "<br>", 
+                   "Plecoptera: ", prettyNum(df.esv$Plecoptera, big.mark = ","), "<br>",
+                   "Trichoptera: ", prettyNum(df.esv$Trichoptera, big.mark = ","), "<br>",
+                   "Chironomidae: ", prettyNum(df.esv$Diptera, big.mark = ","), "<br>")
 
 # Add color
 pal <- c('#fbb4ae','#b3cde3','#ccebc5','#decbe4','#fed9a6','#ffffcc','#e5d8bd','#fddaec','#f2f2f2')
 
 # Generate leaflet map with pie charts
-a <- leaflet(simplified) %>%
+a.esv <- leaflet(simplified) %>%
   addTiles() %>%
   # addProviderTiles(providers$Stamen.Terrain) %>%
   setView(lat = 60, lng = -95, zoom = 3) %>%
-  addPolygons(data=simplified, color= "darkgrey", stroke = TRUE, weight = 1, smoothFactor = 0.2,
+  addPolygons(data=simplified, color= "darkgrey", stroke = TRUE, 
+              weight = 1, smoothFactor = 0.2,
               fillColor = pal, fillOpacity = 0.5
   )  %>%
-  addMinicharts(lng = tax.major.final$Long, lat = tax.major.final$Lat, type = "pie",
-                chartdata = tax.major.final[, c("Ephemeroptera", "Odonata", "Plecoptera", "Trichoptera", "Chironomidae")],
+  addMinicharts(lng = df.esv$Long, lat = df.esv$Lat, type = "pie",
+                chartdata = df.esv[, c("Ephemeroptera", "Odonata", "Plecoptera", "Trichoptera", "Diptera")],
                 popup = popupArgs(html = my_popups))
 # Display pie chart map
-a
+a.esv
+
+# Species tab
+my_popups <- paste("Watershed: ", df.species$WSCSDA_EN, "<br>",
+                   "Ephemeroptera: ", df.species$Ephemeroptera, "<br>", 
+                   "Odonata: ", df.species$Odonata, "<br>", 
+                   "Plecoptera: ", df.species$Plecoptera, "<br>",
+                   "Trichoptera: ", df.species$Trichoptera, "<br>",
+                   "Chironomidae: ", df.species$Diptera, "<br>")
+
+# Generate leaflet map with pie charts
+a.species <- leaflet(simplified) %>%
+  addTiles() %>%
+  # addProviderTiles(providers$Stamen.Terrain) %>%
+  setView(lat = 60, lng = -95, zoom = 3) %>%
+  addPolygons(data=simplified, color= "darkgrey", stroke = TRUE, 
+              weight = 1, smoothFactor = 0.2,
+              fillColor = pal, fillOpacity = 0.5
+  )  %>%
+  addMinicharts(lng = df.species$Long, lat = df.species$Lat, type = "pie",
+                chartdata = df.species[, c("Ephemeroptera", "Odonata", "Plecoptera", "Trichoptera", "Diptera")],
+                popup = popupArgs(html = my_popups))
+# Display pie chart map
+a.species
+
+# Genus Tab
+my_popups <- paste("Watershed: ", df.genus$WSCSDA_EN, "<br>",
+                   "Ephemeroptera: ", df.genus$Ephemeroptera, "<br>", 
+                   "Odonata: ", df.genus$Odonata, "<br>", 
+                   "Plecoptera: ", df.genus$Plecoptera, "<br>",
+                   "Trichoptera: ", df.genus$Trichoptera, "<br>",
+                   "Chironomidae: ", df.genus$Diptera, "<br>")
+
+# Generate leaflet map with pie charts
+a.genus <- leaflet(simplified) %>%
+  addTiles() %>%
+  # addProviderTiles(providers$Stamen.Terrain) %>%
+  setView(lat = 60, lng = -95, zoom = 3) %>%
+  addPolygons(data=simplified, color= "darkgrey", stroke = TRUE, 
+              weight = 1, smoothFactor = 0.2,
+              fillColor = pal, fillOpacity = 0.5
+  )  %>%
+  addMinicharts(lng = df.genus$Long, lat = df.genus$Lat, type = "pie",
+                chartdata = df.genus[, c("Ephemeroptera", "Odonata", "Plecoptera", "Trichoptera", "Diptera")],
+                popup = popupArgs(html = my_popups))
+# Display pie chart map
+a.genus
+
+# Family Tab
+my_popups <- paste("Watershed: ", df.family$WSCSDA_EN, "<br>",
+                   "Ephemeroptera: ", df.family$Ephemeroptera, "<br>", 
+                   "Odonata: ", df.family$Odonata, "<br>", 
+                   "Plecoptera: ", df.family$Plecoptera, "<br>",
+                   "Trichoptera: ", df.family$Trichoptera, "<br>",
+                   "Chironomidae: ", df.family$Diptera, "<br>")
+
+# Generate leaflet map with pie charts
+a.family <- leaflet(simplified) %>%
+  addTiles() %>%
+  # addProviderTiles(providers$Stamen.Terrain) %>%
+  setView(lat = 60, lng = -95, zoom = 3) %>%
+  addPolygons(data=simplified, color= "darkgrey", stroke = TRUE, 
+              weight = 1, smoothFactor = 0.2,
+              fillColor = pal, fillOpacity = 0.5
+  )  %>%
+  addMinicharts(lng = df.family$Long, lat = df.family$Lat, type = "pie",
+                chartdata = df.family[, c("Ephemeroptera", "Odonata", "Plecoptera", "Trichoptera", "Diptera")],
+                popup = popupArgs(html = my_popups))
+# Display pie chart map
+a.family
+
+# Taxon Tab
+my_popups <- paste("Watershed: ",df.taxon$WSCSDA_EN, "<br>",
+                   "Ephemeroptera: ", df.taxon$Ephemeroptera, "<br>", 
+                   "Odonata: ", df.taxon$Odonata, "<br>", 
+                   "Plecoptera: ", df.taxon$Plecoptera, "<br>",
+                   "Trichoptera: ", df.taxon$Trichoptera, "<br>",
+                   "Chironomidae: ", df.taxon$Diptera, "<br>")
+
+# Generate leaflet map with pie charts
+a.taxon <- leaflet(simplified) %>%
+  addTiles() %>%
+  # addProviderTiles(providers$Stamen.Terrain) %>%
+  setView(lat = 60, lng = -95, zoom = 3) %>%
+  addPolygons(data=simplified, color= "darkgrey", stroke = TRUE, 
+              weight = 1, smoothFactor = 0.2,
+              fillColor = pal, fillOpacity = 0.5
+  )  %>%
+  addMinicharts(lng = df.taxon$Long, lat = df.taxon$Lat, type = "pie",
+                chartdata = df.taxon[, c("Ephemeroptera", "Odonata", "Plecoptera", "Trichoptera", "Diptera")],
+                popup = popupArgs(html = my_popups))
+# Display pie chart map
+a.taxon
 
 
 ###############################
@@ -242,75 +517,17 @@ my_popups2 <- paste("Watershed: ", tax.phylum.final$WSCSDA_EN, "<br>",
                    "Cnidaria: ", tax.phylum.final$Cnidaria, "<br>",
                    "Mollusca: ", tax.phylum.final$Mollusca, "<br>")
 
-# Add color
-pal <- c('#fbb4ae','#b3cde3','#ccebc5','#decbe4','#fed9a6','#ffffcc','#e5d8bd','#fddaec','#f2f2f2')
-
 # Generate leaflet map with pie charts
 p <- leaflet(simplified) %>%
   addTiles() %>%
   # addProviderTiles(providers$Stamen.Terrain) %>%
   setView(lat = 60, lng = -95, zoom = 3) %>%
-  addPolygons(data=simplified, color= "darkgrey", stroke = TRUE, weight = 1, smoothFactor = 0.2,
-              fillColor = pal, fillOpacity = 0.5
+  addPolygons(data=simplified, color= "darkgrey", stroke = TRUE, weight = 1, 
+              smoothFactor = 0.2, fillColor = pal, fillOpacity = 0.5
   )  %>%
   addMinicharts(lng = tax.phylum.final$Long, lat = tax.phylum.final$Lat, type = "pie", 
                 chartdata = tax.phylum.final[, c("Annelida", "Arthropoda", "Chordata", "Cnidaria", "Mollusca")],
-                popup = popupArgs(html = my_popups2))
+                popup = popupArgs(html = my_popups))
 # Display pie chart map
 p
 
-
-###############################
-# Take user input on resolution
-choice <- readline(prompt = "Select Resolution (GlobalESV, Genus, Family, Species, Phylum): ")
-
-# Function for generating pie chart map
-fx <- function(choice)  {
-  # Find top 5 of resolution
-  one <- tax %>% count(tax[choice])
-  one <- head(one[order(-one$n), ], 5)
-  top.five <- one[, 1]
-  
-  # Create data of relevant information by resolution and remove incomplete entry
-  df <- tax[, c("File_Name", choice, "taxon", "Site")]
-  df.meta <- merge(df, s3, by = "File_Name", all.x = TRUE)
-  df.meta <- df.meta[!df.meta$File_Name == "STREAM-DFONLX-B-LALD-000X-X-20201011-COI", ]
-  
-  # Group by WSCSDA and resolution choice with File_Name and Sites. Also convert to Wide Format
-  df.choice <- data.frame(df.meta %>% group_by(WSCSDA, df.meta[choice]) %>% summarise(taxon = n_distinct(taxon)))
-  df.choice.wide <- dcast(df.choice, WSCSDA ~ df.choice[, choice], value.var = "taxon")
-  df.choice.wide[is.na(df.choice.wide)] <- 0
-  
-  # Remove entries in resolution not in top 5
-  df.choice.wide2 <- df.choice.wide[names(df.choice.wide) %in% top.five]
-  df.choice.wide2$WSCSDA <- df.choice.wide$WSCSDA
-  
-  # Merge wide resolution with .shp data
-  df.final <- merge(df.choice.wide2, simplified.centroid, by = "WSCSDA", all.x = TRUE)
-  
-  # Create map popup
-  df.popups <- paste("Watershed: ", df.final$WSCSDA_EN, "<br>",
-                      colnames(df.final[2]), ":", df.final[, 2], "<br>", 
-                     colnames(df.final[3]), ":", df.final[, 3], "<br>", 
-                     colnames(df.final[4]), ":", df.final[, 4], "<br>",
-                     colnames(df.final[5]), ":", df.final[, 5], "<br>",
-                     colnames(df.final[6]), ":", df.final[, 6], "<br>")
-
-  # Add color
-  pal <- c('#fbb4ae','#b3cde3','#ccebc5','#decbe4','#fed9a6','#ffffcc','#e5d8bd','#fddaec','#f2f2f2')
-  
-  # Generate leaflet map with pie charts
-  a <- leaflet(simplified) %>%
-    addTiles() %>%
-    # addProviderTiles(providers$Stamen.Terrain) %>%
-    setView(lat = 60, lng = -95, zoom = 3) %>%
-    addPolygons(data=simplified, color= "darkgrey", stroke = TRUE, weight = 1, smoothFactor = 0.2,
-                fillColor = pal, fillOpacity = 0.5
-    )  %>%
-    addMinicharts(lng = df.final$Long, lat = df.final$Lat, type = "pie", 
-                  chartdata = df.final[, 2:6],
-                  popup = popupArgs(html = df.popups))
-  return(a)
-}
-
-fx(choice)
