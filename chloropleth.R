@@ -27,11 +27,10 @@ wwf_wgs84 <- wwf_read %>%
 # Simplify so that map loads faster
 simplified <- rmapshaper::ms_simplify(wwf_wgs84)
 
-
 ###############################
 # Read in taxonomy file
 # STREAM_2018-2020_taxonomy.csv
-tax <- read.csv("taxonomy.csv", header = TRUE, stringsAsFactors = FALSE)
+tax <- read.csv("taxonomy.csv", header = TRUE, stringsAsFactors = FALSE, fileEncoding = "UTF-8-BOM")
 # 275525     33
 
 # Keep taxonomy File_Names as is, it's the metadata filenames that are mangled
