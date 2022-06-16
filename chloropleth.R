@@ -647,3 +647,42 @@ p.taxon <- leaflet(simplified) %>%
 # Display pie chart map
 p.taxon
 
+
+###############################
+# Lists of entries within each watershed by resolution (species, GlobalESV, family, etc.)
+test.meta <- merge(unique(tax), unique(s3), by = "File_Name", all.x = TRUE)
+
+make_list_df <- function(df, rank){
+  # df options: tax.major
+  # rank options: GlobalESV, Species, Genus, Family, taxon
+  # cutoff options: NA, species sBP >= 0.70, genus gBP >= 0.30, species sBP >= 0.20, NA
+  
+  # Keep key fields, File_Name, Order, Family, rank, site
+  # filter by bootstrap values where needed
+  if (rank == "GlobalESV") {
+    df <- df[, c("File_Name","GlobalESV","Site")]
+  } else if (rank == "Species") {
+    df <- df[df$sBP >= 0.70,]
+    df <- df[, c("File_Name","Species","Site")]
+  } else if (rank == "Genus") {
+    df <- df[df$gBP >= 0.30,]
+    df <- df[, c("File_Name","Genus","Site")]
+  } else if (rank == "Family") {
+    df <- df[df$fBP >= 0.20,]
+    df <- df[, c("File_Name","Family","Site")]
+  } else {
+    df <- df[, c("File_Name","taxon","Site")]
+  }
+  # Map taxon, samples, and sites to s3 by File_Name
+  tax.meta <- merge(unique(df), unique(s3), by = "File_Name", all.x = TRUE)
+  # Group by WSCSDA and unique taxon counts, sites, and File_Name samples
+  length_unique_rank <- paste0('length(unique(', rank, '))')
+  tax.rank <- data.frame(tax.meta %>% 
+                           group_by(WSCSDA, Order) %>% 
+                           dplyr::summarize(rank = n_distinct(!!as.symbol(rank))))
+  # Convert long to wide format and remove NAs
+  tax.rank.wide <- dcast(tax.rank, WSCSDA ~ Order, value.var = "rank")
+  tax.rank.wide[is.na(tax.rank.wide)] <- 0
+  # Combine major taxa, WSCSDA, and coordinates
+  #tax.major.final <- merge(tax.rank.wide, simplified.centroid, by = "WSCSDA", all.x = TRUE)
+}
