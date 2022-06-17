@@ -650,39 +650,46 @@ p.taxon
 
 ###############################
 # Lists of entries within each watershed by resolution (species, GlobalESV, family, etc.)
-test.meta <- merge(unique(tax), unique(s3), by = "File_Name", all.x = TRUE)
+meta <- merge(unique(tax), unique(s3), by = "File_Name", all.x = TRUE)
 
-make_list_df <- function(df, rank){
+make_list_df <- function(list.df, list.rank){
   # df options: tax.major
   # rank options: GlobalESV, Species, Genus, Family, taxon
   # cutoff options: NA, species sBP >= 0.70, genus gBP >= 0.30, species sBP >= 0.20, NA
   
   # Keep key fields, File_Name, Order, Family, rank, site
   # filter by bootstrap values where needed
-  if (rank == "GlobalESV") {
-    df <- df[, c("File_Name","GlobalESV","Site")]
-  } else if (rank == "Species") {
-    df <- df[df$sBP >= 0.70,]
-    df <- df[, c("File_Name","Species","Site")]
-  } else if (rank == "Genus") {
-    df <- df[df$gBP >= 0.30,]
-    df <- df[, c("File_Name","Genus","Site")]
-  } else if (rank == "Family") {
-    df <- df[df$fBP >= 0.20,]
-    df <- df[, c("File_Name","Family","Site")]
+  if (list.rank == "GlobalESV") {
+    list.df <- list.df[, c("File_Name","GlobalESV","Site")]
+  } else if (list.rank == "Species") {
+    list.df <- list.df[list.df$sBP >= 0.70,]
+    list.df <- list.df[, c("File_Name","Species","Site")]
+  } else if (list.rank == "Genus") {
+    list.df <- list.df[list.df$gBP >= 0.30,]
+    list.df <- list.df[, c("File_Name","Genus","Site")]
+  } else if (list.rank == "Family") {
+    list.df <- list.df[list.df$fBP >= 0.20,]
+    list.df <- list.df[, c("File_Name","Family","Site")]
   } else {
-    df <- df[, c("File_Name","taxon","Site")]
+    list.df <- list.df[, c("File_Name","taxon","Site")]
   }
   # Map taxon, samples, and sites to s3 by File_Name
-  tax.meta <- merge(unique(df), unique(s3), by = "File_Name", all.x = TRUE)
+  list.meta <- merge(unique(list.df), unique(s3), by = "File_Name", all.x = TRUE)
   # Group by WSCSDA and unique taxon counts, sites, and File_Name samples
-  length_unique_rank <- paste0('length(unique(', rank, '))')
-  tax.rank <- data.frame(tax.meta %>% 
-                           group_by(WSCSDA, Order) %>% 
-                           dplyr::summarize(rank = n_distinct(!!as.symbol(rank))))
+  #length_unique_list <- paste0('length(unique(', rank, '))')
+  tax.list <- data.frame(list.meta %>% 
+                           group_by(WSCSDA, list.rank) %>% 
+                           dplyr::summarise(rank = n_distinct(list.rank)))
   # Convert long to wide format and remove NAs
-  tax.rank.wide <- dcast(tax.rank, WSCSDA ~ Order, value.var = "rank")
-  tax.rank.wide[is.na(tax.rank.wide)] <- 0
+  #tax.list.wide <- dcast(tax.list, WSCSDA ~ rank, value.var = "rank")
+  #tax.list.wide[is.na(tax.list.wide)] <- 0
   # Combine major taxa, WSCSDA, and coordinates
   #tax.major.final <- merge(tax.rank.wide, simplified.centroid, by = "WSCSDA", all.x = TRUE)
 }
+# Make lists
+list.esv <- make_minichart_df(meta, "GlobalESV")
+list.species <- make_minichart_df(meta, "Species")
+list.genus <- make_minichart_df(meta, "Genus")
+list.family <- make_minichart_df(meta, "Family")
+list.taxon <- make_minichart_df(meta, "taxon")
+
