@@ -682,6 +682,7 @@ make_list_df <- function(list.df, list.rank){
   tax.list.merge <- merge(tax.list, simplified.centroid, by = "WSCSDA", all.x = TRUE)
   tax.list.final <- tax.list.merge[, c("WSCSDA_EN", list.rank)]
 }
+
 # Make lists
 list.esv <- make_list_df(meta, "GlobalESV")
 list.species <- make_list_df(meta, "Species")
