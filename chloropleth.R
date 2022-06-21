@@ -660,36 +660,32 @@ make_list_df <- function(list.df, list.rank){
   # Keep key fields, File_Name, Order, Family, rank, site
   # filter by bootstrap values where needed
   if (list.rank == "GlobalESV") {
-    list.df <- list.df[, c("File_Name","GlobalESV","Site")]
+    list.df <- list.df[, c("File_Name","GlobalESV")]
   } else if (list.rank == "Species") {
     list.df <- list.df[list.df$sBP >= 0.70,]
-    list.df <- list.df[, c("File_Name","Species","Site")]
+    list.df <- list.df[, c("File_Name","Species")]
   } else if (list.rank == "Genus") {
     list.df <- list.df[list.df$gBP >= 0.30,]
-    list.df <- list.df[, c("File_Name","Genus","Site")]
+    list.df <- list.df[, c("File_Name","Genus")]
   } else if (list.rank == "Family") {
     list.df <- list.df[list.df$fBP >= 0.20,]
-    list.df <- list.df[, c("File_Name","Family","Site")]
+    list.df <- list.df[, c("File_Name","Family")]
   } else {
-    list.df <- list.df[, c("File_Name","taxon","Site")]
+    list.df <- list.df[, c("File_Name","taxon")]
   }
   # Map taxon, samples, and sites to s3 by File_Name
   list.meta <- merge(unique(list.df), unique(s3), by = "File_Name", all.x = TRUE)
   # Group by WSCSDA and unique taxon counts, sites, and File_Name samples
-  #length_unique_list <- paste0('length(unique(', rank, '))')
   tax.list <- data.frame(list.meta %>% 
-                           group_by(WSCSDA, list.rank) %>% 
-                           dplyr::summarise(rank = n_distinct(list.rank)))
-  # Convert long to wide format and remove NAs
-  #tax.list.wide <- dcast(tax.list, WSCSDA ~ rank, value.var = "rank")
-  #tax.list.wide[is.na(tax.list.wide)] <- 0
-  # Combine major taxa, WSCSDA, and coordinates
-  #tax.major.final <- merge(tax.rank.wide, simplified.centroid, by = "WSCSDA", all.x = TRUE)
+                           group_by(WSCSDA, list.meta[2]) %>% 
+                           dplyr::summarise(rank = n_distinct(!!as.symbol(list.rank))))
+  tax.list.merge <- merge(tax.list, simplified.centroid, by = "WSCSDA", all.x = TRUE)
+  tax.list.final <- tax.list.merge[, c("WSCSDA_EN", list.rank)]
 }
 # Make lists
-list.esv <- make_minichart_df(meta, "GlobalESV")
-list.species <- make_minichart_df(meta, "Species")
-list.genus <- make_minichart_df(meta, "Genus")
-list.family <- make_minichart_df(meta, "Family")
-list.taxon <- make_minichart_df(meta, "taxon")
+list.esv <- make_list_df(meta, "GlobalESV")
+list.species <- make_list_df(meta, "Species")
+list.genus <- make_list_df(meta, "Genus")
+list.family <- make_list_df(meta, "Family")
+list.taxon <- make_list_df(meta, "taxon")
 
